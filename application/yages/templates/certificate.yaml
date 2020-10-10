@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: yages
+  namespace: istio-system
+spec:
+  secretName: yages
+  commonName: yages.istio.abatilo.cloud
+  dnsNames:
+    - yages.istio.abatilo.cloud
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer

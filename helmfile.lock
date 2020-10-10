@@ -1,0 +1,19 @@
+version: v0.130.1
+dependencies:
+- name: cert-manager
+  repository: https://charts.jetstack.io
+  version: v1.0.3
+- name: external-dns
+  repository: https://charts.bitnami.com/bitnami
+  version: 3.4.6
+- name: istio-operator
+  repository: git+https://github.com/istio/istio@manifests/charts?sparse=0&ref=1.7.0
+  version: 1.7.0
+- name: raw
+  repository: http://storage.googleapis.com/kubernetes-charts-incubator
+  version: 0.2.3
+- name: raw
+  repository: http://storage.googleapis.com/kubernetes-charts-incubator
+  version: 0.2.3
+digest: sha256:661c38188f5ec1ad751f49fd36df0be7e8bce32fa21c591a521c2fbf8c039fda
+generated: "2020-10-09T20:20:31.949043078-06:00"

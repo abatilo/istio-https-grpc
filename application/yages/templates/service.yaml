@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yages.fullname" . }}
+  labels:
+    {{- include "yages.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 9000
+      name: grpc
+      protocol: TCP
+  selector:
+    {{- include "yages.selectorLabels" . | nindent 4 }}

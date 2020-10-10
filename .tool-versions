@@ -1,0 +1,5 @@
+pulumi 2.11.2
+grpcurl 1.7.0
+helm 3.3.4
+helmfile 0.130.1
+istioctl 1.7.0

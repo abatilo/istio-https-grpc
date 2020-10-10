@@ -1,0 +1,83 @@
+repositories:
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: istio
+    url: git+https://github.com/istio/istio@manifests/charts?sparse=0&ref=1.7.0
+  - name: incubator
+    url: http://storage.googleapis.com/kubernetes-charts-incubator
+
+releases:
+  - name: external-dns
+    namespace: kube-system
+    chart: bitnami/external-dns
+    values:
+      - serviceAccount:
+          create: true
+          annotations:
+            eks.amazonaws.com/role-arn: "arn:aws:iam::717012417639:role/external-dns-3137f96"
+      - policy: sync
+      - txtOwnerId: cluster
+
+  - name: cert-manager
+    namespace: cert-manager
+    chart: jetstack/cert-manager
+    values:
+      - installCRDs: true
+      - serviceAccount:
+          annotations:
+            eks.amazonaws.com/role-arn: "arn:aws:iam::717012417639:role/cert-manager-fa6be1a"
+      - securityContext:
+          enabled: true
+
+  - name: cluster-issuer
+    namespace: cert-manager
+    chart: incubator/raw
+    needs:
+      - cert-manager/cert-manager
+    values:
+      - resources:
+          - apiVersion: cert-manager.io/v1alpha2
+            kind: ClusterIssuer
+            metadata:
+              name: letsencrypt
+            spec:
+              acme:
+                server: https://acme-v02.api.letsencrypt.org/directory
+                email: aaronbatilo@gmail.com
+                privateKeySecretRef:
+                  name: letsencrypt
+                solvers:
+                  - selector:
+                      dnsZones:
+                        - "yages.istio.abatilo.cloud"
+                    dns01:
+                      route53:
+                        region: us-west-2
+                        hostedZoneID: Z5RBM38SR8YR2
+
+  - name: istio-operator
+    chart: istio/istio-operator
+
+  - name: istio
+    namespace: istio-system
+    chart: incubator/raw
+    values:
+      - resources:
+          - apiVersion: install.istio.io/v1alpha1
+            kind: IstioOperator
+            metadata:
+              name: istio-operator
+            spec:
+              components:
+                egressGateways:
+                  - enabled: false
+                    name: istio-egressgateway
+                ingressGateways:
+                  - enabled: true
+                    name: istio-ingressgateway
+                    k8s:
+                      serviceAnnotations:
+                        external-dns.alpha.kubernetes.io/hostname: "*.istio.abatilo.cloud"
+                        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
