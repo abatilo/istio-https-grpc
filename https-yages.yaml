@@ -1,0 +1,91 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: yages
+  labels:
+    # Allow for injection of the sidecar
+    istio-injection: enabled
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yages
+  namespace: yages
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yages
+  template:
+    metadata:
+      labels:
+        app: yages
+    spec:
+      containers:
+        - image: quay.io/mhausenblas/yages:0.1.0
+          name: yages
+          ports:
+            - containerPort: 9000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yages
+  namespace: yages
+spec:
+  ports:
+    - port: 80 # Routing on port 80 of the service lets me use the name "yages" which implies port 80
+      targetPort: 9000 # Port on the container
+      protocol: TCP
+      name: grpc # port must be named otherwise istio won't route traffic properly
+  selector:
+    app: yages
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate # Since we're not using a typical ingress, we must manually request a certificate to cert-manager
+metadata:
+  name: yages
+  namespace: istio-system
+spec:
+  commonName: yages.civo.aaronbatilo.dev
+  dnsNames:
+    - yages.civo.aaronbatilo.dev
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  secretName: yages-cert
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: yages
+  namespace: yages
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: yages-cert # Gateway references the `spec.secretName` in the `Certificate` resource
+      hosts:
+        - "yages.civo.aaronbatilo.dev"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: yages
+  namespace: yages
+spec:
+  hosts:
+    - "yages.civo.aaronbatilo.dev"
+  gateways:
+    - yages
+  http:
+    - route:
+        - destination:
+            host: yages # No `port` needed since we're still just using 80

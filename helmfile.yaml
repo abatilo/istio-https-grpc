@@ -3,37 +3,37 @@ repositories:
     url: https://charts.bitnami.com/bitnami
   - name: jetstack
     url: https://charts.jetstack.io
-  - name: istio
-    url: git+https://github.com/istio/istio@manifests/charts?sparse=0&ref=1.7.0
   - name: incubator
-    url: http://storage.googleapis.com/kubernetes-charts-incubator
+    url: https://charts.helm.sh/incubator
+  - name: istio
+    url: git+https://github.com/istio/istio@manifests/charts?sparse=0&ref=1.8.0
+  - name: istio-control
+    url: git+https://github.com/istio/istio@manifests/charts/istio-control?sparse=0&ref=1.8.0
+  - name: istio-gateways
+    url: git+https://github.com/istio/istio@manifests/charts/gateways?sparse=0&ref=1.8.0
+  - name: kiali
+    url: https://kiali.org/helm-charts
 
 releases:
-  - name: external-dns
-    namespace: kube-system
-    chart: bitnami/external-dns
+  - name: metrics-server
+    chart: bitnami/metrics-server
     values:
-      - serviceAccount:
+      - apiService:
           create: true
-          annotations:
-            eks.amazonaws.com/role-arn: "arn:aws:iam::717012417639:role/external-dns-3137f96"
-      - policy: sync
-      - txtOwnerId: cluster
 
+  # Installs cert-manager for automatic certificate management
   - name: cert-manager
-    namespace: cert-manager
     chart: jetstack/cert-manager
+    namespace: cert-manager
+    createNamespace: true
     values:
       - installCRDs: true
-      - serviceAccount:
-          annotations:
-            eks.amazonaws.com/role-arn: "arn:aws:iam::717012417639:role/cert-manager-fa6be1a"
-      - securityContext:
-          enabled: true
 
+  # Create a cluster wide global certificate issuer that relies on
+  # https01 for verifying domains
   - name: cluster-issuer
-    namespace: cert-manager
     chart: incubator/raw
+    namespace: cert-manager
     needs:
       - cert-manager/cert-manager
     values:
@@ -44,40 +44,73 @@ releases:
               name: letsencrypt
             spec:
               acme:
-                server: https://acme-v02.api.letsencrypt.org/directory
-                email: aaronbatilo@gmail.com
+                server: https://acme-staging-v02.api.letsencrypt.org/directory
+                email: AaronBatilo@gmail.com
                 privateKeySecretRef:
                   name: letsencrypt
                 solvers:
-                  - selector:
-                      dnsZones:
-                        - "yages.istio.abatilo.cloud"
-                    dns01:
-                      route53:
-                        region: us-west-2
-                        hostedZoneID: Z5RBM38SR8YR2
+                  - http01:
+                      ingress:
+                        class: istio
 
-  - name: istio-operator
-    chart: istio/istio-operator
-
-  - name: istio
+  # Installs istio base components
+  - name: istio-base
+    chart: istio/base
     namespace: istio-system
+    createNamespace: true # Create the istio-system namespace for me
+
+  # Installs istiod
+  - name: istio-discovery
+    chart: istio-control/istio-discovery
+    namespace: istio-system
+    needs:
+      - istio-system/istio-base
+    values:
+      - global:
+          hub: docker.io/istio # default to using testing container
+          tag: 1.8.0
+
+  # Creates istio-ingressgateway for routing traffic into the cluster
+  - name: istio-ingress
+    chart: istio-gateways/istio-ingress
+    namespace: istio-system
+    needs:
+      - istio-system/istio-base
+      - istio-system/istio-discovery
+    values:
+      - global:
+          hub: docker.io/istio # default to using testing container
+          tag: 1.8.0
+
+  # Responds to http01 challenges globally for us
+  # Not to be used by any applications.
+  - name: global-gateway
     chart: incubator/raw
+    namespace: istio-system
+    needs:
+      - istio-system/istio-base
     values:
       - resources:
-          - apiVersion: install.istio.io/v1alpha1
-            kind: IstioOperator
+          - apiVersion: networking.istio.io/v1beta1
+            kind: Gateway
             metadata:
-              name: istio-operator
+              name: global-gateway
+              labels:
+                app: ingressgateway
             spec:
-              components:
-                egressGateways:
-                  - enabled: false
-                    name: istio-egressgateway
-                ingressGateways:
-                  - enabled: true
-                    name: istio-ingressgateway
-                    k8s:
-                      serviceAnnotations:
-                        external-dns.alpha.kubernetes.io/hostname: "*.istio.abatilo.cloud"
-                        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+              selector:
+                istio: ingressgateway
+              servers:
+                - port:
+                    number: 80
+                    protocol: HTTP
+                    name: http
+                  hosts:
+                    - "*"
+
+  - name: kiali-server
+    namespace: istio-system
+    chart: kiali/kiali-server
+    values:
+      - auth:
+          strategy: anonymous

@@ -1,5 +1,0 @@
-name: cluster
-runtime: nodejs
-description: An EKS cluster to use for testing
-backend:
-  url: s3://abatilo/infra/cloud/

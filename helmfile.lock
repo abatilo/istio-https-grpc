@@ -1,19 +1,28 @@
-version: v0.130.1
+version: v0.134.1
 dependencies:
+- name: base
+  repository: git+https://github.com/istio/istio@manifests/charts?sparse=0&ref=1.8.0
+  version: 1.1.0
 - name: cert-manager
   repository: https://charts.jetstack.io
-  version: v1.0.3
-- name: external-dns
+  version: v1.1.0
+- name: istio-discovery
+  repository: git+https://github.com/istio/istio@manifests/charts/istio-control?sparse=0&ref=1.8.0
+  version: 1.2.0
+- name: istio-ingress
+  repository: git+https://github.com/istio/istio@manifests/charts/gateways?sparse=0&ref=1.8.0
+  version: 1.1.0
+- name: kiali-server
+  repository: https://kiali.org/helm-charts
+  version: 1.27.0
+- name: metrics-server
   repository: https://charts.bitnami.com/bitnami
-  version: 3.4.6
-- name: istio-operator
-  repository: git+https://github.com/istio/istio@manifests/charts?sparse=0&ref=1.7.0
-  version: 1.7.0
+  version: 5.2.0
 - name: raw
-  repository: http://storage.googleapis.com/kubernetes-charts-incubator
-  version: 0.2.3
+  repository: https://charts.helm.sh/incubator
+  version: 0.2.5
 - name: raw
-  repository: http://storage.googleapis.com/kubernetes-charts-incubator
-  version: 0.2.3
-digest: sha256:661c38188f5ec1ad751f49fd36df0be7e8bce32fa21c591a521c2fbf8c039fda
-generated: "2020-10-09T20:20:31.949043078-06:00"
+  repository: https://charts.helm.sh/incubator
+  version: 0.2.5
+digest: sha256:b69a9a44699ba4ce46f5bcad48c3a46b3399fbc045cb2038c5edf60b8d65da21
+generated: "2020-11-28T10:32:43.728550066-07:00"
